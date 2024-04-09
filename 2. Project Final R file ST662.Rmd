@@ -1,0 +1,392 @@
+---
+title: "ST662 Project 1"
+author: "Humna Naz"
+date: "2024-03-15"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE,include=FALSE}
+#install.packages("mnormt")
+#install.packages("kableExtra")
+#install.packages("Matrix")
+#install.packages("lme4")
+#install.packages("ICC")
+library(MASS)
+library(gridExtra)  
+library(mnormt) 
+library(lme4) 
+library(knitr) 
+library(kableExtra)
+library(tidyverse)
+library(ICC)
+library(ggplot2)
+```
+
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+# Load the data
+wagedata_raw <- read.table("C:/Users/pawan/Downloads/wage.data.txt", header=TRUE)
+
+# Change variable structure
+wagedata <- data.frame(as.numeric(wagedata_raw$education), as.factor(wagedata_raw$south), 
+                       as.factor(wagedata_raw$sex), as.numeric(wagedata_raw$experience), 
+                       as.factor(wagedata_raw$union), as.numeric(wagedata_raw$wage),
+                       as.numeric(wagedata_raw$age), as.factor(wagedata_raw$race), 
+                       as.factor(wagedata_raw$occupation), as.factor(wagedata_raw$sector), 
+                       as.factor(wagedata_raw$marr) )
+
+colnames(wagedata) <- c("education", "south", "sex", "experience", "union", 
+                      "wage", "age", "race", "occupation", "sector", "marr")
+
+# Check for any missing data points
+any(is.na(wagedata))  # check for missing values - none
+
+# Change wage variable to binary (<7.78=low, >7.78=high)
+wagedata$wage_binary <- ifelse(wagedata$wage < 7.78, 0,1)  # change wage variable to binary high/low
+
+
+head(wagedata)
+str(wagedata)
+```
+
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+
+### Proportions
+par(mar = c(2, 2, 2, 2))
+par(mfrow = c(4,2))
+
+# South
+south_proportion <- mean(wagedata$south == 1)
+non_south_proportion <- mean(wagedata$south == 0)
+barplot(c(south=south_proportion, non_south=non_south_proportion), col = c("blue", "red"), main = "Proportion in the South")
+#cat("Proportion of people in south:", south_proportion, "\n")
+#cat("Proportion of people not in south:", non_south_proportion, "\n")
+
+# Sex
+male_proportion <- mean(wagedata$sex == 0)
+female_proportion <- mean(wagedata$sex == 1)
+barplot(c(male=male_proportion, female=female_proportion), col = c("blue", "red"), main = "Proportion of Males and Females")
+#cat("Proportion of males:", male_proportion, "\n")
+#cat("Proportion of females:", female_proportion, "\n")
+
+# Union
+union_proportion <- mean(wagedata$union == 1)
+non_union_proportion <- mean(wagedata$union == 0)
+barplot(c(union=union_proportion, non_union=non_union_proportion), col = c("blue", "red"), main = "Union Membership")
+# cat("Proportion of people in union:", union_proportion, "\n")
+# cat("Proportion of people not in union:", non_union_proportion, "\n")
+
+
+
+# Race
+cauc_proportion <- mean(wagedata$race == 3)
+hispanic_proportion <- mean(wagedata$race == 2)
+other_proportion <- mean(wagedata$race == 1)
+barplot(c(Caucasian=cauc_proportion, Hispanic=hispanic_proportion, Other=other_proportion), col = c("blue", "red", "green"), main = "Proportion of Race")
+# cat("Proportion of caucasian:", cauc_proportion, "\n")
+# cat("Proportion of hispanic:", hispanic_proportion, "\n")
+# cat("Proportion of other:", other_proportion, "\n")
+
+
+# Occupation
+worker_proportion <- mean(wagedata$occupation == 6)
+technical_proportion <- mean(wagedata$occupation == 5)
+services_proportion <- mean(wagedata$occupation == 4)
+office_proportion <- mean(wagedata$occupation == 3)
+sales_proportion <- mean(wagedata$occupation == 2)
+management_proportion <- mean(wagedata$occupation == 1)
+barplot(c(Workers=worker_proportion, Technical=technical_proportion, Services=services_proportion, 
+      Office=office_proportion, Sales=sales_proportion, Management=management_proportion),
+    col = c("blue", "red", "green", "yellow", "orange", "purple"), main = "Proportion of each occupation")
+# cat("Proportion of workers:", worker_proportion, "\n")
+# cat("Proportion of technical:", technical_proportion, "\n")
+# cat("Proportion of services:", services_proportion, "\n")
+# cat("Proportion of office:", office_proportion, "\n")
+# cat("Proportion of sales:", sales_proportion, "\n")
+# cat("Proportion of management:", management_proportion, "\n")
+
+# Sector
+manufacturing_proportion <- mean(wagedata$sector == 1)
+construction_proportion <- mean(wagedata$sector == 2)
+other_sector_proportion <- mean(wagedata$sector == 0)
+barplot(c(Manufacturing=manufacturing_proportion, Construction=construction_proportion, Other=other_sector_proportion), col = c("blue", "red", "green"), main = "Proportion of each sector")
+# cat("Proportion in manufacturing sector:", manufacturing_proportion, "\n")
+# cat("Proportion in construction sector:", construction_proportion, "\n")
+# cat("Proportion in other sector:", other_sector_proportion, "\n")
+
+
+# Married
+married_proportion <- mean(wagedata$marr == 1)
+not_married_proportion <- mean(wagedata$marr == 0)
+barplot(c(Married=married_proportion, Not_married=not_married_proportion), col = c("blue", "red"), main = "Proportion Married")
+# cat("Proportion of married people:", married_proportion, "\n")
+# cat("Proportion of not married people:", not_married_proportion, "\n")
+
+# Wage_binary
+high_proportion <- mean(wagedata$wage_binary == 1)
+low_proportion <- mean(wagedata$wage_binary == 0)
+barplot(c(High_wage=high_proportion, Low_wage=low_proportion), col = c("blue", "red"), main = "Proportion of High vs Low wage")
+# cat("Proportion of high wage:", high_proportion, "\n")
+# cat("Proportion of low wage:", low_proportion, "\n")
+
+
+```
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+#histograms for individual variables
+
+plot1<-ggplot(wagedata, aes(education))+
+  geom_histogram()
+
+plot2<-ggplot(wagedata, aes(experience))+
+  geom_histogram()
+
+plot3<-ggplot(wagedata, aes(age))+
+  geom_histogram(bins = 20)+coord_cartesian(xlim =c(10,70))
+
+plot4<-ggplot(wagedata, aes(wage))+
+  geom_histogram()
+  grid.arrange(plot1,plot2,plot3,plot4)
+```
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+created_boxplot<- boxplot(wagedata$wage)
+
+outliers <- created_boxplot$out
+
+wagedata<- wagedata[-which(wagedata$wage %in% outliers),]
+
+```
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+# Summary of the variables
+
+
+summary(wagedata)
+
+boxplot(education~wage_binary, data=wagedata, names=c('low', 'high'), main="Education vs Wage")
+boxplot(experience~wage_binary, data=wagedata, names=c('low', 'high'), main="Experience vs Wage")
+boxplot(age~wage_binary, data=wagedata, names=c('low', 'high'), main="Age vs Wage")
+
+ggplot(data=wagedata, aes(x=age, y=wage))+geom_point()
+
+plot.11<-ggplot(data=wagedata, aes(x=education, y=wage), main="Education vs Wage (Numerical)")+geom_point()
+
+boxplot(wage~south, data=wagedata, main="Wage vs South")
+boxplot(wage~sex, data=wagedata, main="Wage vs Sex")
+boxplot(wage~union, data=wagedata, main="Wage vs Union")
+par(mfrow=c(1,2))
+plot.12<-boxplot(wage~race, data=wagedata, main="Wage vs Race", names=c("cauc", "hispanic", "other"))
+plot.13<-boxplot(wage~occupation, data=wagedata, main="Wage vs Occupation", 
+        names=c("worker", "technical", "services", "office", "sales", "management") )
+boxplot(wage~sector, data=wagedata, main="Wage vs Sector", names=c("manufacturing","construction","other"))
+boxplot(wage~marr, data=wagedata, main="Wage vs Marr", names=c("married", "not married"))
+
+plot.11
+```
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+cor<-cor(wagedata[,c(1,4,6,7)])
+cor
+```
+
+
+```{r,ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+#removing outliers
+created_boxplot<- boxplot(wagedata$education)
+
+outliers <- created_boxplot$out
+
+new_wagedata <- wagedata[-which(wagedata$education %in% outliers),]
+dim(new_wagedata)
+
+```
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+set.seed(2024)
+indices<- sample(1:nrow(new_wagedata), ceiling(0.7*nrow(new_wagedata)))
+train_wage<-new_wagedata[indices,]
+test_wage<-new_wagedata[-indices,]
+dim(train_wage)
+dim(test_wage)
+
+```
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+# model 1: full model
+full_model <- glm(wage_binary ~ education+south+sex+experience+union+age+race+occupation+sector+marr,
+                  data=train_wage, family="binomial")
+summary(full_model)
+
+
+# model 2: remove experience because it is highly correlated with age
+model2 <- glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr,
+                  data=train_wage, family="binomial")
+summary(model2)
+
+#drop-in-deviance for full model and model 2
+anova(model2, full_model, test = "Chisq")
+
+# model 3: quasibinomial
+model3 <- glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr,
+                  data=train_wage, family="quasibinomial")
+
+summary(model3)
+
+
+
+
+# model 4: model with all interaction terms
+model4 <- glm(wage_binary ~ (education+south+sex+union+age+race+occupation+sector+marr)^2,
+                  data=train_wage, family="binomial")
+
+summary(model4)
+
+
+# model 5: model with one interaction term, education*south
+model5 <- glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + education*south,
+                  data=train_wage, family="binomial")
+summary(model5)
+
+
+# model 6: model with one interaction term, education*sex
+model6 <- glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + education*sex,
+                  data=train_wage, family="binomial")
+summary(model6)
+
+#model7: interaction in south*occupation
+model7<-glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + south*occupation,
+                  data=train_wage, family="binomial")
+summary(model7)
+
+#model8: interaction with sex and south
+model8<-glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + sex*south,
+                  data=train_wage, family="binomial")
+summary(model8)
+
+#model9: interaction with education and south
+
+model9<-glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + education*south,
+                  data=train_wage, family="binomial")
+summary(model9)
+
+#model10: interaction with south*sex(final model)
+model10<-glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr + occupation*sex,
+                  data=train_wage, family="binomial")
+summary(model10)
+
+# model11: model with two interaction term, education*south and education*sex
+model11 <- glm(wage_binary ~ education+south+sex+union+age+race+occupation+sector+marr 
+              + occupation*sex + education*sex, data=train_wage, family="binomial")
+summary(model11)
+
+#drop-in-deviance: model with interaction of sex and occupation and model with sex*occupation, education*sex
+anova(model10, model11, test ="Chisq")
+
+# model with numerical response variable
+model12 <- glm(wage ~ education+south+sex+union+age+race+occupation+sector+marr,
+                  data=train_wage)
+summary(model12)
+
+
+#good-ness of fit: - it indicates that the model fit the data very well.
+1-pchisq(model10$deviance, model10$df.residual)
+1-pchisq(model11$deviance, model11$df.residual)
+
+```
+
+Age and experience are highly correlated. this is because the experience is calculated using age - education
+
+once the experience variable is removed, the age becomes a lot more statistically significant.
+
+do not need to use an offset - we cannot use offset in logistic regression
+
+overdispersion - when doing the quasibinomial mode, the dispersion parameter is 1.031591, which tells us that the overdispersion is very minor. thus, dont need to use quasibinomial
+
+
+after testing full model including all interaction terms, none of the interactions were significant. thus, do not need to include interaction effects in the final model
+the interaction effects that seemed to be significant were education&south and education&sex
+
+
+
+the residual plots do not satisfy the assumptions because our response variable is binary. because of this, we cannot check the randomness
+
+the plot for wage and age 
+
+
+```{r,ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+#To check the linearity of log(odds) with predictors
+
+pred.logit<-predict(model10, type= "response")
+logit<-log(pred.logit/(1-pred.logit))
+
+#library(ggplot2)
+plot1<-ggplot(train_wage, aes(train_wage$education, logit))+
+  geom_point()+
+  geom_smooth(method="lm", col="red")
+
+plot2<-ggplot(train_wage, aes(train_wage$age, logit))+
+  geom_point()+
+  geom_smooth(method="lm", col="red")
+
+plot3<-ggplot(train_wage, aes(train_wage$experience, logit))+
+  geom_point()+
+  geom_smooth(method="lm", col="red")
+
+grid.arrange(plot1, plot2, plot3, ncol= 3)
+```
+
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+
+pred.test<-predict(model10, newdata= test_wage, type= "response")
+label_test<-ifelse(pred.test>=0.5, "1", "0")
+mean(label_test!= test_wage$wage_binary)
+mean(label_test==test_wage$wage_binary)
+```
+
+#LASSO model
+
+```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+set.seed(1)
+
+library(glmnet)
+
+x <- model.matrix(wage_binary~., train_wage[,-c(4,6)])
+y <- train_wage[,12]
+
+#fitting model using different lambda values
+grid <- 10^seq(10, -2, length=100)
+lasso.mod.wage <- glmnet(x, y, alpha=1, lambda=grid, family="binomial")
+
+#using 10-fold cv to select optimal lambda
+cv.fit.lasso.wage <- cv.glmnet(as.matrix(x), as.matrix(y), alpha=1, family="binomial")
+
+cv.fit.lasso.wage$lambda.min
+#using optimal lambda to fit the LASSO regression
+lasso.mod_best.wage <- glmnet(x, y, alpha=1, lambda=0.007389478, family="binomial")
+summary(lasso.mod_best.wage)
+lasso.mod_best.wage
+coef(lasso.mod_best.wage)
+
+#plots for lambda and norm
+library(plotmo)
+plot(cv.fit.lasso.wage)
+par(mfrow= c(1,2))
+plot_glmnet(cv.fit.lasso.wage$glmnet.fit, s=0.007389478, label =12, xvar = "norm", xlab ="L1-norm")
+plot_glmnet(lasso.mod.wage, xvar= "rlambda",s=0.007389478, xlim=c(5,-5))
+
+test_x <- model.matrix(wage_binary~., test_wage[,-c(4,6)])
+test_y <- test_wage[,12]
+
+#predicting values
+preds_lasso.wage<-predict(lasso.mod_best.wage, test_x, type = "response")
+preds_label_lasso.wage<-ifelse(preds_lasso.wage>0.5, "1","0")
+mean(preds_label_lasso.wage!=test_y)
+mean(preds_label_lasso.wage==test_y)
+
+```
+
+
+
+
