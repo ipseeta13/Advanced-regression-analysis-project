@@ -1,7 +1,5 @@
 ---
-title: "ST662 Project 1"
-author: "Humna Naz"
-date: "2024-03-15"
+title: "Logistic Regression analysis using Wages dataset"
 output:
   word_document: default
   pdf_document: default
