@@ -25,7 +25,7 @@ library(ggplot2)
 
 ```{r, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
 # Load the data
-wagedata_raw <- read.table("C:/Users/pawan/Downloads/wage.data.txt", header=TRUE)
+wagedata_raw <- read.table("C:/Users/ipseeta/Downloads/wage.data.txt", header=TRUE)
 
 # Change variable structure
 wagedata <- data.frame(as.numeric(wagedata_raw$education), as.factor(wagedata_raw$south), 
